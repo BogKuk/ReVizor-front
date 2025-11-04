@@ -1,5 +1,6 @@
 import axios from "axios";
 import {useEffect} from "react";
+import AuthorizationCard from "./components/AuthorizationCard.jsx";
 
 function App() {
 
@@ -14,9 +15,7 @@ function App() {
     }, []);
 
   return (
-    <>
-
-    </>
+      <AuthorizationCard />
   )
 }
 
