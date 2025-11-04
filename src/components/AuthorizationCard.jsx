@@ -1,12 +1,20 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {KeyOutlined, UserOutlined} from '@ant-design/icons';
 import {Button, Card, Input, Space, Typography} from 'antd';
 
 const { Title } = Typography;
 
 const AuthorizationCard = () => {
+    const [show, setShow] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setShow(true), 50);
+        return () => clearTimeout(timer);
+    }, []);
+
     return (
-        <Card title={
+        <Card className={`fade-slide-up ${show ? 'show' : ''}`}
+            title={
             <Title level={3} style={{ margin: 0 }}>
                 Sign In to ReVizor
             </Title>

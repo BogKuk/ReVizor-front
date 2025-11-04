@@ -67,6 +67,17 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+.fade-slide-up {
+    opacity: 0;
+    transform: translateY(20px); /* старт ниже на 20px */
+    transition: opacity 1s ease, transform 1s ease;
+}
+
+.fade-slide-up.show {
+    opacity: 1;
+    transform: translateY(0); /* конечное положение */
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
