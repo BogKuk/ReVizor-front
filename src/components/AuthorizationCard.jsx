@@ -1,11 +1,14 @@
-import React, {useEffect, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {KeyOutlined, UserOutlined} from '@ant-design/icons';
 import {Button, Card, Input, Space, Typography} from 'antd';
 import axios from "axios";
 
+import { AuthContext  } from "../context/AuthContext.jsx";
+
 const { Title } = Typography;
 
 const AuthorizationCard = () => {
+    const { login: loginContext } = useContext(AuthContext);
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [show, setShow] = useState(false);
@@ -17,15 +20,18 @@ const AuthorizationCard = () => {
 
     const handleLogin = async () => {
         try {
-            const response = await axios.post('http://127.0.0.1:8000/authorization/login', {
-                login,
-                password
-            });
-            console.log('Ответ сервера:', response.data);
-            // здесь можно делать редирект или сохранять токен
+            const response = await axios.post(
+                'http://127.0.0.1:8000/authorization/login',
+                { login, password },
+                { withCredentials: true, headers: { "Content-Type": "application/json" } }// важно для отправки refresh cookie
+            );
+
+            loginContext(response.data.access_token);
+            // здесь можно делать редирект, например:
+            // navigate("/dashboard");
+
         } catch (error) {
             console.error('Ошибка при логине:', error);
-            // здесь можно показать пользователю уведомление об ошибке
         }
     };
 
