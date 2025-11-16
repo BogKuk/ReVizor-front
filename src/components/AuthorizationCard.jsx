@@ -12,6 +12,9 @@ const AuthorizationCard = () => {
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
     const [show, setShow] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [status, setStatus] = useState("");
 
     useEffect(() => {
         const timer = setTimeout(() => setShow(true), 50);
@@ -19,6 +22,9 @@ const AuthorizationCard = () => {
     }, []);
 
     const handleLogin = async () => {
+        setLoading(true);
+        setError('');
+        setStatus("");
         try {
             const response = await axios.post(
                 'http://127.0.0.1:8000/authorization/login',
@@ -30,8 +36,15 @@ const AuthorizationCard = () => {
             // здесь можно делать редирект, например:
             // navigate("/dashboard");
 
-        } catch (error) {
-            console.error('Ошибка при логине:', error);
+        } catch (err) {
+            if (err.response && err.response.status === 401) {
+                setError('Incorrect Username or Password');
+                setStatus('error');
+            } else {
+                setError('Server Error, please try again later');
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -54,6 +67,7 @@ const AuthorizationCard = () => {
                        width: '100%',
                    }}>
                 <Input
+                    status={status}
                     placeholder="Username"
                     prefix={<UserOutlined style={{ color: 'rgba(0,0,0,.25)' }} />}
                     size="large"
@@ -61,13 +75,15 @@ const AuthorizationCard = () => {
                     onChange={e => setLogin(e.target.value)}
                 />
                 <Input.Password
+                    status={status}
                     placeholder="Password"
                     prefix = {<KeyOutlined style={{ color: 'rgba(0,0,0,.25)' }}/>}
                     size="large"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                 />
-                <Button type="primary" size="large" block onClick={handleLogin}>
+                {error && <Typography.Text type="danger">{error}</Typography.Text>}
+                <Button type="primary" size="large" block onClick={handleLogin} loading={loading}>
                     Sign In
                 </Button>
             </Space>
