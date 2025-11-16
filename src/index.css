@@ -38,6 +38,7 @@ a:hover {
 body {
   display: flex;
   justify-content: center;
+  background-color: #eaeef6;
   align-items: center;
   min-width: 320px;
   min-height: 100vh;
@@ -69,13 +70,19 @@ button:focus-visible {
 
 .fade-slide-up {
     opacity: 0;
-    transform: translateY(20px); /* старт ниже на 20px */
+    transform: translateY(20px);
     transition: opacity 1s ease, transform 1s ease;
 }
 
 .fade-slide-up.show {
     opacity: 1;
-    transform: translateY(0); /* конечное положение */
+    transform: translateY(0);
+}
+
+.fade-slide-up.exit {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 1s ease, transform 1s ease;
 }
 
 @media (prefers-color-scheme: light) {
