@@ -1,40 +1,58 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import axios from 'axios';
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [accessToken, setAccessToken] = useState(() => localStorage.getItem('accessToken') || null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    const login = (token) => {
-        setAccessToken(token);
-        localStorage.setItem("accessToken", token);
+    axios.defaults.baseURL = 'http://127.0.0.1:8000';
+    axios.defaults.withCredentials = true;
+
+    const login = async (login, password) => {
+        await axios.post('/authorization/login', { login, password }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        setIsAuthenticated(true);
     };
 
-    const logout = () => {
-        setAccessToken(null);
-        localStorage.removeItem('accessToken');
+    const register = async (login, password) => {
+        await axios.post('/authorization/register', { login, password }, {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        setIsAuthenticated(true);
+    };
+
+    const logout = async () => {
+        try {
+            await axios.post('/authorization/logout', {}, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } finally {
+            setIsAuthenticated(false);
+        }
     };
 
     const refreshAccessToken = async () => {
         try {
-            const response = await axios.post('http://127.0.0.1:8000/authorization/refresh', {}, {
-                withCredentials: true, headers: { "Content-Type": "application/json" }// важно, чтобы cookie отправились
+            await axios.post('/authorization/refresh', {}, {
+                headers: { 'Content-Type': 'application/json' }
             });
-            const token = response.data.access_token;
-            setAccessToken(token);
-            localStorage.setItem('accessToken', token);
-            return token;
-        } catch (err) {
-            console.error('Не удалось обновить access token', err);
-            logout();
-            return null;
+            setIsAuthenticated(true);
+            return true;
+        } catch {
+            setIsAuthenticated(false);
+            return false;
         }
     };
 
+    useEffect(() => {
+        refreshAccessToken();
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ accessToken, login, logout, refreshAccessToken }}>
+        <AuthContext.Provider value={{ isAuthenticated, login, register, logout, refreshAccessToken }}>
             {children}
         </AuthContext.Provider>
     );

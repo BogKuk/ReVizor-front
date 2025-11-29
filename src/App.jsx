@@ -5,13 +5,13 @@ import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext.jsx";
 
 function App() {
-    const { accessToken } = useContext(AuthContext);
+    const { isAuthenticated } = useContext(AuthContext);
 
   return (
       <Router>
           <Routes>
               <Route path="/auth" element={<AuthorizationCard />} />
-              <Route path="/" element={accessToken ? <MainPage /> : <Navigate to="/auth" />} />
+              <Route path="/" element={isAuthenticated ? <MainPage /> : <Navigate to="/auth" />} />
           </Routes>
       </Router>
   )
