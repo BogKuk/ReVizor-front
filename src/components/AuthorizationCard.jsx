@@ -32,10 +32,26 @@ const AuthorizationCard = () => {
             const response = await axios.post(
                 'http://127.0.0.1:8000/authorization/login',
                 { login, password },
-                { withCredentials: true, headers: { "Content-Type": "application/json" } }
+                { headers: { "Content-Type": "application/json" } }
             );
 
-            loginContext(response.data.access_token);
+            const authHeader = response.headers?.authorization || '';
+            const refreshHeader = response.headers?.['x-refresh-token'] || '';
+
+            const accessToken = authHeader.startsWith('Bearer ')
+                ? authHeader.slice('Bearer '.length)
+                : null;
+            const refreshToken = refreshHeader.startsWith('Bearer ')
+                ? refreshHeader.slice('Bearer '.length)
+                : null;
+
+            if (!accessToken || !refreshToken) {
+                setStatus('error');
+                setError('Tokens not provided by server');
+                return;
+            }
+
+            loginContext(accessToken, refreshToken);
 
             setExit(true);
 
