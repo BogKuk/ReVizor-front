@@ -24,6 +24,32 @@ const AuthorizationCard = () => {
         return () => clearTimeout(timer);
     }, []);
 
+    const extractTokens = (response) => {
+        const authHeader = response.headers?.authorization || '';
+        const refreshHeader = response.headers?.['x-refresh-token'] || '';
+        const accessToken = authHeader.startsWith('Bearer ')
+            ? authHeader.slice('Bearer '.length)
+            : null;
+        const refreshToken = refreshHeader.startsWith('Bearer ')
+            ? refreshHeader.slice('Bearer '.length)
+            : null;
+        return { accessToken, refreshToken };
+    };
+
+    const applyTokensOrError = ({ accessToken, refreshToken }) => {
+        if (!accessToken || !refreshToken) {
+            setStatus('error');
+            setError('Server error');
+            return false;
+        }
+        loginContext(accessToken, refreshToken);
+        setExit(true);
+        setTimeout(() => {
+            navigate("/");
+        }, 1000);
+        return true;
+    };
+
     const handleLogin = async () => {
         setLoading(true);
         setError('');
@@ -35,33 +61,38 @@ const AuthorizationCard = () => {
                 { headers: { "Content-Type": "application/json" } }
             );
 
-            const authHeader = response.headers?.authorization || '';
-            const refreshHeader = response.headers?.['x-refresh-token'] || '';
-
-            const accessToken = authHeader.startsWith('Bearer ')
-                ? authHeader.slice('Bearer '.length)
-                : null;
-            const refreshToken = refreshHeader.startsWith('Bearer ')
-                ? refreshHeader.slice('Bearer '.length)
-                : null;
-
-            if (!accessToken || !refreshToken) {
-                setStatus('error');
-                setError('Tokens not provided by server');
-                return;
-            }
-
-            loginContext(accessToken, refreshToken);
-
-            setExit(true);
-
-            setTimeout(() => {
-                navigate("/");
-            }, 1000);
+            const tokens = extractTokens(response);
+            if (!applyTokensOrError(tokens)) return;
 
         } catch (err) {
             if (err.response && err.response.status === 401) {
                 setError('Incorrect Username or Password');
+                setStatus('error');
+            } else {
+                setError('Server Error, please try again later');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRegister = async () => {
+        setLoading(true);
+        setError('');
+        setStatus("");
+        try {
+            const response = await axios.post(
+                'http://127.0.0.1:8000/authorization/register',
+                { login, password },
+                { headers: { "Content-Type": "application/json" } }
+            );
+
+            const tokens = extractTokens(response);
+            if (!applyTokensOrError(tokens)) return;
+
+        } catch (err) {
+            if (err.response && err.response.status === 409) {
+                setError('User already exists');
                 setStatus('error');
             } else {
                 setError('Server Error, please try again later');
@@ -108,6 +139,9 @@ const AuthorizationCard = () => {
                 {error && <Typography.Text type="danger">{error}</Typography.Text>}
                 <Button type="primary" size="large" block onClick={handleLogin} loading={loading}>
                     Sign In
+                </Button>
+                <Button size="large" block onClick={handleRegister} loading={loading}>
+                    Register
                 </Button>
             </Space>
         </Card>
