@@ -62,7 +62,7 @@ const AuthorizationCard = () => {
             );
 
             const tokens = extractTokens(response);
-            if (!applyTokensOrError(tokens)) return;
+            applyTokensOrError(tokens);
 
         } catch (err) {
             if (err.response && err.response.status === 401) {
@@ -88,7 +88,7 @@ const AuthorizationCard = () => {
             );
 
             const tokens = extractTokens(response);
-            if (!applyTokensOrError(tokens)) return;
+            applyTokensOrError(tokens);
 
         } catch (err) {
             if (err.response && err.response.status === 409) {
