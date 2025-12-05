@@ -1,36 +1,69 @@
-import React from "react";
-import { Card, Typography } from "antd";
-
-const { Title } = Typography;
+import React, { useEffect, useState } from 'react';
+import { Button, List, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import axios from 'axios';
 
 const MainPage = () => {
+    const [models, setModels] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchModels = async () => {
+            setLoading(true);
+            setError('');
+            try {
+                const response = await axios.get('http://127.0.0.1:8000/analysis/models/names');
+                setModels(Array.isArray(response.data) ? response.data : []);
+            } catch {
+                setError('Не удалось загрузить модели');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchModels();
+    }, []);
+
+    
+
     return (
-        <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            padding: 20
-        }}>
-            <Title level={2}>Welcome to ReVizor MainPage!</Title>
-            <p>Everything is working fine 😺</p>
-            <Card
-                style={{
-                    marginTop: 20,
-                    padding: 20,
-                    borderRadius: 12,
-                    boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-                    textAlign: "center",
-                    backgroundColor: "#1a1a1a"
-                }}
-            >
-                <img
-                    src="https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif"
-                    alt="cute cat"
-                    style={{ maxWidth: "100%", borderRadius: 8 }}
+        <div
+            style={{
+                position: 'fixed',
+                left: 12,
+                top: 12,
+                height: 'calc(100vh - 24px)',
+                width: 320,
+                backgroundColor: '#ffffff',
+                borderRadius: 12,
+                boxShadow: '0 8px 16px rgba(0,0,0,0.08)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+            }}
+        >
+            <div style={{ padding: 12, borderBottom: '1px solid #e0e0e0' }}>
+                <Button type="primary" icon={<PlusOutlined />} block>
+                    Add analysis
+                </Button>
+                {error && (
+                    <Typography.Text type="danger" style={{ marginTop: 8, display: 'block' }}>
+                        {error}
+                    </Typography.Text>
+                )}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+                <List
+                    size="large"
+                    loading={loading}
+                    dataSource={models}
+                    renderItem={(name, idx) => (
+                        <List.Item key={idx}>
+                            <Button block>{name}</Button>
+                        </List.Item>
+                    )}
                 />
-            </Card>
+            </div>
         </div>
     );
 };
