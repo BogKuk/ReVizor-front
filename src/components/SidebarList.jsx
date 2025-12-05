@@ -1,18 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { Button, List, Typography } from 'antd';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { AuthContext } from '../context/AuthContext.jsx';
 
 const SidebarList = () => {
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const { accessToken } = useContext(AuthContext);
+
     const fetchModels = async () => {
         setLoading(true);
         setError('');
         try {
-            const response = await axios.get('http://127.0.0.1:8000/analysis/models/names');
+            const response = await axios.get('http://127.0.0.1:8000/analysis/models/names', {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            });
             setModels(Array.isArray(response.data) ? response.data : []);
         } catch {
             setError('Не удалось загрузить модели');
@@ -22,11 +27,17 @@ const SidebarList = () => {
     };
 
     useEffect(() => {
-        fetchModels();
-        const handler = () => fetchModels();
+        if (accessToken) {
+            fetchModels();
+        }
+        const handler = () => {
+            if (accessToken) {
+                fetchModels();
+            }
+        };
         window.addEventListener('models-updated', handler);
         return () => window.removeEventListener('models-updated', handler);
-    }, []);
+    }, [accessToken]);
 
     return (
         <div
