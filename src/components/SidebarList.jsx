@@ -9,7 +9,7 @@ const SidebarList = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const { accessToken } = useContext(AuthContext);
+    const { accessToken, logout } = useContext(AuthContext);
 
     const fetchModels = async () => {
         setLoading(true);
@@ -76,6 +76,11 @@ const SidebarList = () => {
                         </List.Item>
                     )}
                 />
+            </div>
+            <div style={{ padding: 12, borderTop: '1px solid #e0e0e0' }}>
+                <Button danger block onClick={logout}>
+                    Logout
+                </Button>
             </div>
         </div>
     );
