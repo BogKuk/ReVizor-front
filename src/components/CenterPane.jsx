@@ -1,8 +1,9 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { LaptopOutlined, NotificationOutlined, UserOutlined, UploadOutlined } from '@ant-design/icons';
 import { Layout, Menu, theme, Upload, message, Typography } from 'antd';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
+import ModelViewer from './ModelViewer.jsx';
 const { Header, Content, Sider } = Layout;
 const items1 = ['1', '2', '3'].map(key => ({
     key,
@@ -25,6 +26,7 @@ const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map((icon, i
 });
 const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
+    const [modelUrl, setModelUrl] = useState(null);
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
@@ -36,12 +38,22 @@ const CenterPane = () => {
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-                await axios.post('http://127.0.0.1:8000/upload/', formData, {
+                const response = await axios.post('http://127.0.0.1:8000/upload/', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                     },
                 });
+                const relUrl = response.data?.url;
+                if (relUrl) {
+                    const fullUrl = `http://127.0.0.1:8000${relUrl}`;
+                    try {
+                        await axios.head(fullUrl);
+                        setModelUrl(fullUrl);
+                    } catch {
+                        message.error('Model unavailable');
+                    }
+                }
                 onSuccess('ok');
                 message.success('Файл загружен');
                 window.dispatchEvent(new Event('models-updated'));
@@ -96,14 +108,29 @@ const CenterPane = () => {
                             borderRadius: borderRadiusLG,
                         }}
                     >
-                        <Dragger {...uploadProps} style={{ padding: 24 }}>
-                            <p className="ant-upload-drag-icon">
-                                <UploadOutlined />
-                            </p>
-                            <Typography.Text>Перетащите файл сюда или нажмите для выбора</Typography.Text>
-                            <br />
-                            <Typography.Text type="secondary">Допустимые форматы: .obj, .fbx, .glb, .gltf</Typography.Text>
-                        </Dragger>
+                        {modelUrl ? (
+                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                <ModelViewer
+                                    url={modelUrl}
+                                    width={'100%'}
+                                    height={600}
+                                    autoFrame
+                                    onError={() => {
+                                        message.error('Model cant be loaded');
+                                        setModelUrl(null);
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <Dragger {...uploadProps} style={{ padding: 24 }}>
+                                <p className="ant-upload-drag-icon">
+                                    <UploadOutlined />
+                                </p>
+                                <Typography.Text>Drag and drop a file here or click to select</Typography.Text>
+                                <br />
+                                <Typography.Text type="secondary">Accepted formats: .obj, .fbx, .glb, .gltf</Typography.Text>
+                            </Dragger>
+                        )}
                     </Content>
                 </Layout>
             </Layout>
