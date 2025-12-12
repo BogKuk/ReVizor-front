@@ -5,10 +5,10 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
 import ModelViewer from './ModelViewer.jsx';
 const { Header, Content, Sider } = Layout;
-const items1 = ['1', '2', '3'].map(key => ({
-    key,
-    label: `nav ${key}`,
-}));
+const headerItems = [
+    { key: 'model', label: 'Model' },
+    { key: 'report', label: 'Report' },
+];
 const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map((icon, index) => {
     const key = String(index + 1);
     return {
@@ -31,6 +31,7 @@ const CenterPane = () => {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
     const { Dragger } = Upload;
+    const [activeTab, setActiveTab] = useState('model');
     const uploadProps = {
         accept: '.obj,.fbx,.glb,.gltf',
         multiple: false,
@@ -83,8 +84,9 @@ const CenterPane = () => {
                 <Menu
                     theme="dark"
                     mode="horizontal"
-                    defaultSelectedKeys={['2']}
-                    items={items1}
+                    selectedKeys={[activeTab]}
+                    onClick={({ key }) => setActiveTab(key)}
+                    items={headerItems}
                     style={{ flex: 1, minWidth: 0 }}
                 />
             </Header>
@@ -108,28 +110,34 @@ const CenterPane = () => {
                             borderRadius: borderRadiusLG,
                         }}
                     >
-                        {modelUrl ? (
-                            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                <ModelViewer
-                                    url={modelUrl}
-                                    width={'100%'}
-                                    height={600}
-                                    autoFrame
-                                    onError={() => {
-                                        message.error('Model cant be loaded');
-                                        setModelUrl(null);
-                                    }}
-                                />
-                            </div>
+                        {activeTab === 'model' ? (
+                            modelUrl ? (
+                                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                    <ModelViewer
+                                        url={modelUrl}
+                                        width={'100%'}
+                                        height={600}
+                                        autoFrame
+                                        onError={() => {
+                                            message.error('Model cant be loaded');
+                                            setModelUrl(null);
+                                        }}
+                                    />
+                                </div>
+                            ) : (
+                                <Dragger {...uploadProps} style={{ padding: 24 }}>
+                                    <p className="ant-upload-drag-icon">
+                                        <UploadOutlined />
+                                    </p>
+                                    <Typography.Text>Drag and drop a file here or click to select</Typography.Text>
+                                    <br />
+                                    <Typography.Text type="secondary">Accepted formats: .obj, .fbx, .glb, .gltf</Typography.Text>
+                                </Dragger>
+                            )
                         ) : (
-                            <Dragger {...uploadProps} style={{ padding: 24 }}>
-                                <p className="ant-upload-drag-icon">
-                                    <UploadOutlined />
-                                </p>
-                                <Typography.Text>Drag and drop a file here or click to select</Typography.Text>
-                                <br />
-                                <Typography.Text type="secondary">Accepted formats: .obj, .fbx, .glb, .gltf</Typography.Text>
-                            </Dragger>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                <Typography.Text>No analysis yet</Typography.Text>
+                            </div>
                         )}
                     </Content>
                 </Layout>
