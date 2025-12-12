@@ -27,6 +27,7 @@ const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map((icon, i
 const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
     const [modelUrl, setModelUrl] = useState(null);
+    const [messageApi, contextHolder] = message.useMessage();
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
@@ -52,14 +53,14 @@ const CenterPane = () => {
                         await axios.head(fullUrl);
                         setModelUrl(fullUrl);
                     } catch {
-                        message.error('Model unavailable');
+                        messageApi.open({ type: 'error', content: 'Model unavailable' });
                     }
                 }
                 onSuccess('ok');
-                message.success('Файл загружен');
+                messageApi.open({ type: 'success', content: 'Файл загружен' });
                 window.dispatchEvent(new Event('models-updated'));
             } catch (err) {
-                message.error('Ошибка загрузки файла');
+                messageApi.open({ type: 'error', content: 'Ошибка загрузки файла' });
                 onError(err);
             }
         },
@@ -79,6 +80,7 @@ const CenterPane = () => {
             }}
         >
         <Layout style={{ width: '100%'}}>
+            {contextHolder}
             <Header style={{ display: 'flex', alignItems: 'center' }}>
                 <div className="demo-logo" />
                 <Menu
@@ -118,10 +120,10 @@ const CenterPane = () => {
                                         width={'100%'}
                                         height={600}
                                         autoFrame
-                                        onError={() => {
-                                            message.error('Model cant be loaded');
-                                            setModelUrl(null);
-                                        }}
+                                    onError={() => {
+                                        messageApi.open({ type: 'error', content: 'Model cant be loaded' });
+                                        setModelUrl(null);
+                                    }}
                                     />
                                 </div>
                             ) : (

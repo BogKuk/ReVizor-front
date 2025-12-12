@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { Button, List, Typography } from 'antd';
+import { Button, List, Typography, message } from 'antd';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
@@ -7,20 +7,19 @@ import { AuthContext } from '../context/AuthContext.jsx';
 const SidebarList = () => {
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [messageApi, contextHolder] = message.useMessage();
 
     const { accessToken, logout } = useContext(AuthContext);
 
     const fetchModels = async () => {
         setLoading(true);
-        setError('');
         try {
             const response = await axios.get('http://127.0.0.1:8000/analysis/models/names', {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
             setModels(Array.isArray(response.data) ? response.data : []);
         } catch {
-            setError('Не удалось загрузить модели');
+            messageApi.open({ type: 'error', content: 'Не удалось загрузить модели' });
         } finally {
             setLoading(false);
         }
@@ -55,15 +54,11 @@ const SidebarList = () => {
                 overflow: 'hidden'
             }}
         >
+            {contextHolder}
             <div style={{ padding: 12, borderBottom: '1px solid #e0e0e0' }}>
                 <Button type="primary" icon={<PlusCircleOutlined />} block>
                     Add analysis
                 </Button>
-                {error && (
-                    <Typography.Text type="danger" style={{ marginTop: 8, display: 'block' }}>
-                        {error}
-                    </Typography.Text>
-                )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
                 <List
