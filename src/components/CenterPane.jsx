@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { LaptopOutlined, NotificationOutlined, UserOutlined, UploadOutlined } from '@ant-design/icons';
 import { Layout, Menu, theme, Upload, message, Typography } from 'antd';
 import axios from 'axios';
@@ -26,13 +26,31 @@ const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map((icon, i
 });
 const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
-    const [modelUrl, setModelUrl] = useState(null);
+    const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
     const [messageApi, contextHolder] = message.useMessage();
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
     const { Dragger } = Upload;
     const [activeTab, setActiveTab] = useState('model');
+    useEffect(() => {
+        const stored = localStorage.getItem('lastModelUrl');
+        if (stored) {
+            axios.head(stored)
+                .then(() => setModelUrl(stored))
+                .catch(() => {
+                    localStorage.removeItem('lastModelUrl');
+                    setModelUrl(null);
+                });
+        }
+    }, []);
+    useEffect(() => {
+        if (modelUrl) {
+            localStorage.setItem('lastModelUrl', modelUrl);
+        } else {
+            localStorage.removeItem('lastModelUrl');
+        }
+    }, [modelUrl]);
     const uploadProps = {
         accept: '.obj,.fbx,.glb,.gltf',
         multiple: false,
@@ -52,6 +70,7 @@ const CenterPane = () => {
                     try {
                         await axios.head(fullUrl);
                         setModelUrl(fullUrl);
+                        localStorage.setItem('lastModelUrl', fullUrl);
                     } catch {
                         messageApi.open({ type: 'error', content: 'Model unavailable' });
                     }
@@ -122,7 +141,8 @@ const CenterPane = () => {
                                         autoFrame
                                     onError={() => {
                                         messageApi.open({ type: 'error', content: 'Model cant be loaded' });
-                                        setModelUrl(null);
+        						setModelUrl(null);
+                                        localStorage.removeItem('lastModelUrl');
                                     }}
                                     />
                                 </div>
