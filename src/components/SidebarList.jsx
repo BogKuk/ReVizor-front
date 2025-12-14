@@ -25,14 +25,15 @@ const SidebarList = () => {
         }
     }, [accessToken, messageApi]);
 
-    const deleteModel = async (id, name) => {
+    const deleteModel = async (id) => {
         try {
             await axios.delete(`http://127.0.0.1:8000/upload/${id}`, {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
-            setModels(prev => prev.filter(n => n !== name));
+            setModels(prev => prev.filter(n => n.id !== id));
             messageApi.open({ type: 'success', content: 'Модель удалена' });
             window.dispatchEvent(new Event('models-updated'));
+            window.dispatchEvent(new Event('new-analysis'));
         } catch {
             messageApi.open({ type: 'error', content: 'Не удалось удалить модель' });
         }
@@ -73,7 +74,14 @@ const SidebarList = () => {
         >
             {contextHolder}
             <div style={{ padding: 12, borderBottom: '1px solid #e0e0e0' }}>
-                <Button type="primary" icon={<PlusCircleOutlined />} block>
+                <Button
+                    type="primary"
+                    icon={<PlusCircleOutlined />}
+                    block
+                    onClick={() => {
+                        window.dispatchEvent(new CustomEvent('new-analysis'));
+                    }}
+                >
                     Add analysis
                 </Button>
             </div>
@@ -90,7 +98,7 @@ const SidebarList = () => {
                                     title="Удалить модель?"
                                     okText="Да"
                                     cancelText="Нет"
-                                    onConfirm={() => deleteModel(name.id, name.name)}
+                                    onConfirm={() => deleteModel(name.id)}
                                 >
                                     <Button danger icon={<DeleteOutlined />} />
                                 </Popconfirm>

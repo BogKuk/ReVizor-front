@@ -75,7 +75,18 @@ const CenterPane = () => {
             }
         };
         window.addEventListener('open-model', handler);
-        return () => window.removeEventListener('open-model', handler);
+        const reset = () => {
+            setSelectedModelId(null);
+            setModelUrl(null);
+            localStorage.removeItem('lastModelUrl');
+            setReportText('No analysis yet');
+            setActiveTab('model');
+        };
+        window.addEventListener('new-analysis', reset);
+        return () => {
+            window.removeEventListener('open-model', handler);
+            window.removeEventListener('new-analysis', reset);
+        };
     }, [accessToken, messageApi]);
     useEffect(() => {
         if (activeTab !== 'report' || !selectedModelId) return;
