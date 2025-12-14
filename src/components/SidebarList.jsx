@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useCallback } from 'react';
-import { Button, List, Typography, message } from 'antd';
-import { PlusCircleOutlined } from '@ant-design/icons';
+import { Button, List, Typography, message, Popconfirm } from 'antd';
+import { PlusCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
 
@@ -8,7 +8,6 @@ const SidebarList = () => {
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
-    const [idsByName, setIdsByName] = useState({});
 
     const { accessToken, logout } = useContext(AuthContext);
 
@@ -19,25 +18,6 @@ const SidebarList = () => {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
             setModels(Array.isArray(response.data) ? response.data : []);
-            const names = Array.isArray(response.data) ? response.data : [];
-            const map = {};
-            let id = 1;
-            let found = 0;
-            const maxTries = names.length * 10;
-            while (found < names.length && id <= maxTries) {
-                try {
-                    const r = await axios.get(`http://127.0.0.1:8000/analysis/models/${id}/url`, {
-                        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-                    });
-                    const name = r.data?.name;
-                    if (name && names.includes(name) && !map[name]) {
-                        map[name] = id;
-                        found += 1;
-                    }
-                } catch { void 0; }
-                id += 1;
-            }
-            setIdsByName(map);
         } catch {
             messageApi.open({ type: 'error', content: 'Не удалось загрузить модели' });
         } finally {
@@ -45,12 +25,20 @@ const SidebarList = () => {
         }
     }, [accessToken, messageApi]);
 
-    const openModel = (name) => {
-        const id = idsByName[name];
-        if (!id) {
-            messageApi.open({ type: 'warning', content: 'Модель недоступна' });
-            return;
+    const deleteModel = async (id, name) => {
+        try {
+            await axios.delete(`http://127.0.0.1:8000/upload/${id}`, {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            });
+            setModels(prev => prev.filter(n => n !== name));
+            messageApi.open({ type: 'success', content: 'Модель удалена' });
+            window.dispatchEvent(new Event('models-updated'));
+        } catch {
+            messageApi.open({ type: 'error', content: 'Не удалось удалить модель' });
         }
+    };
+
+    const openModel = (id) => {
         window.dispatchEvent(new CustomEvent('open-model', { detail: { id } }));
     };
 
@@ -96,7 +84,17 @@ const SidebarList = () => {
                     dataSource={models}
                     renderItem={(name, idx) => (
                         <List.Item key={idx}>
-                            <Button block onClick={() => openModel(name)}>{name}</Button>
+                            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+                                <Button style={{ flex: 1 }} onClick={() => openModel(name.id)}>{name.name}</Button>
+                                <Popconfirm
+                                    title="Удалить модель?"
+                                    okText="Да"
+                                    cancelText="Нет"
+                                    onConfirm={() => deleteModel(name.id, name.name)}
+                                >
+                                    <Button danger icon={<DeleteOutlined />} />
+                                </Popconfirm>
+                            </div>
                         </List.Item>
                     )}
                 />
