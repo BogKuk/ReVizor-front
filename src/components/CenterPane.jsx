@@ -28,6 +28,8 @@ const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
     const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
     const [messageApi, contextHolder] = message.useMessage();
+    const [selectedModelId, setSelectedModelId] = useState(null);
+    const [reportText, setReportText] = useState('No analysis yet');
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
@@ -51,6 +53,48 @@ const CenterPane = () => {
             localStorage.removeItem('lastModelUrl');
         }
     }, [modelUrl]);
+    useEffect(() => {
+        const handler = async (e) => {
+            const { id } = e.detail || {};
+            if (!id) return;
+            setSelectedModelId(id);
+            try {
+                const r = await axios.get(`http://127.0.0.1:8000/analysis/models/${id}/url`, {
+                    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+                });
+                const rel = r.data?.url;
+                if (rel) {
+                    const full = `http://127.0.0.1:8000${rel}`;
+                    await axios.head(full);
+                    setModelUrl(full);
+                    localStorage.setItem('lastModelUrl', full);
+                    setActiveTab('model');
+                }
+            } catch {
+                messageApi.open({ type: 'error', content: 'Не удалось открыть модель' });
+            }
+        };
+        window.addEventListener('open-model', handler);
+        return () => window.removeEventListener('open-model', handler);
+    }, [accessToken, messageApi]);
+    useEffect(() => {
+        if (activeTab !== 'report' || !selectedModelId) return;
+        (async () => {
+            try {
+                const r = await axios.get(`http://127.0.0.1:8000/analysis/models/${selectedModelId}/analysis`, {
+                    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+                });
+                const data = r.data;
+                if (data && typeof data === 'object' && 'message' in data && data.message === 'no analysis yet') {
+                    setReportText('No analysis yet');
+                } else {
+                    setReportText(JSON.stringify(data));
+                }
+            } catch {
+                messageApi.open({ type: 'error', content: 'Не удалось получить отчёт' });
+            }
+        })();
+    }, [activeTab, selectedModelId, accessToken, messageApi]);
     const uploadProps = {
         accept: '.obj,.fbx,.glb,.gltf',
         multiple: false,
@@ -158,7 +202,7 @@ const CenterPane = () => {
                             )
                         ) : (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                <Typography.Text>No analysis yet</Typography.Text>
+                                <Typography.Text>{reportText}</Typography.Text>
                             </div>
                         )}
                     </Content>

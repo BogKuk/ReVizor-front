@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import { Button, List, Typography, message } from 'antd';
 import { PlusCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -8,21 +8,50 @@ const SidebarList = () => {
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
+    const [idsByName, setIdsByName] = useState({});
 
     const { accessToken, logout } = useContext(AuthContext);
 
-    const fetchModels = async () => {
+    const fetchModels = useCallback(async () => {
         setLoading(true);
         try {
             const response = await axios.get('http://127.0.0.1:8000/analysis/models/names', {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
             setModels(Array.isArray(response.data) ? response.data : []);
+            const names = Array.isArray(response.data) ? response.data : [];
+            const map = {};
+            let id = 1;
+            let found = 0;
+            const maxTries = names.length * 10;
+            while (found < names.length && id <= maxTries) {
+                try {
+                    const r = await axios.get(`http://127.0.0.1:8000/analysis/models/${id}/url`, {
+                        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+                    });
+                    const name = r.data?.name;
+                    if (name && names.includes(name) && !map[name]) {
+                        map[name] = id;
+                        found += 1;
+                    }
+                } catch { void 0; }
+                id += 1;
+            }
+            setIdsByName(map);
         } catch {
             messageApi.open({ type: 'error', content: 'Не удалось загрузить модели' });
         } finally {
             setLoading(false);
         }
+    }, [accessToken, messageApi]);
+
+    const openModel = (name) => {
+        const id = idsByName[name];
+        if (!id) {
+            messageApi.open({ type: 'warning', content: 'Модель недоступна' });
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('open-model', { detail: { id } }));
     };
 
     useEffect(() => {
@@ -36,7 +65,7 @@ const SidebarList = () => {
         };
         window.addEventListener('models-updated', handler);
         return () => window.removeEventListener('models-updated', handler);
-    }, [accessToken]);
+    }, [accessToken, fetchModels]);
 
     return (
         <div
@@ -67,7 +96,7 @@ const SidebarList = () => {
                     dataSource={models}
                     renderItem={(name, idx) => (
                         <List.Item key={idx}>
-                            <Button block>{name}</Button>
+                            <Button block onClick={() => openModel(name)}>{name}</Button>
                         </List.Item>
                     )}
                 />
