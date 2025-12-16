@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { LaptopOutlined, NotificationOutlined, UserOutlined, UploadOutlined } from '@ant-design/icons';
-import { Layout, Menu, theme, Upload, message, Typography } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
+import { Layout, Menu, theme, Upload, message, Typography, Select, Button, Card, Descriptions, Statistic, Tag, Divider, Space } from 'antd';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext.jsx';
 import ModelViewer from './ModelViewer.jsx';
@@ -9,32 +9,32 @@ const headerItems = [
     { key: 'model', label: 'Model' },
     { key: 'report', label: 'Report' },
 ];
-const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map((icon, index) => {
-    const key = String(index + 1);
-    return {
-        key: `sub${key}`,
-        icon: React.createElement(icon),
-        label: `subnav ${key}`,
-        children: Array.from({ length: 4 }).map((_, j) => {
-            const subKey = index * 4 + j + 1;
-            return {
-                key: subKey,
-                label: `option${subKey}`,
-            };
-        }),
-    };
-});
 const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
     const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
     const [messageApi, contextHolder] = message.useMessage();
     const [selectedModelId, setSelectedModelId] = useState(null);
     const [reportText, setReportText] = useState('No analysis yet');
+    const [reportData, setReportData] = useState(null);
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
     const { Dragger } = Upload;
     const [activeTab, setActiveTab] = useState('model');
+    const ANALYSIS_OPTIONS = {
+        gameTypes: ['low-poly', 'indie', 'aa', 'aaa', 'cinematic'],
+        usageByType: {
+            'low-poly': ['background', 'prop', 'hero'],
+            indie: ['background', 'prop', 'hero'],
+            aa: ['background', 'prop', 'hero'],
+            aaa: ['background', 'prop', 'hero'],
+            cinematic: ['background', 'prop', 'hero'],
+        },
+    };
+    const [analysisParams, setAnalysisParams] = useState({
+        game_type: ANALYSIS_OPTIONS.gameTypes[1],
+        usage_area: ANALYSIS_OPTIONS.usageByType[ANALYSIS_OPTIONS.gameTypes[1]][1],
+    });
     useEffect(() => {
         const stored = localStorage.getItem('lastModelUrl');
         if (stored) {
@@ -80,6 +80,7 @@ const CenterPane = () => {
             setModelUrl(null);
             localStorage.removeItem('lastModelUrl');
             setReportText('No analysis yet');
+            setReportData(null);
             setActiveTab('model');
         };
         window.addEventListener('new-analysis', reset);
@@ -98,14 +99,27 @@ const CenterPane = () => {
                 const data = r.data;
                 if (data && typeof data === 'object' && 'message' in data && data.message === 'no analysis yet') {
                     setReportText('No analysis yet');
+                    setReportData(null);
                 } else {
-                    setReportText(JSON.stringify(data));
+                    setReportData(data);
                 }
             } catch {
                 messageApi.open({ type: 'error', content: 'Не удалось получить отчёт' });
             }
         })();
     }, [activeTab, selectedModelId, accessToken, messageApi]);
+    const runAnalysis = async () => {
+        if (!selectedModelId) return;
+        try {
+            const r = await axios.post(`http://127.0.0.1:8000/analysis/models/${selectedModelId}/analyze`, analysisParams, {
+                headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            });
+            setReportData(r.data);
+            messageApi.open({ type: 'success', content: 'Анализ выполнен' });
+        } catch {
+            messageApi.open({ type: 'error', content: 'Не удалось выполнить анализ' });
+        }
+    };
     const uploadProps = {
         accept: '.obj,.fbx,.glb,.gltf',
         multiple: false,
@@ -167,14 +181,28 @@ const CenterPane = () => {
                 />
             </Header>
             <Layout>
-                <Sider width={200} style={{ background: colorBgContainer }}>
-                    <Menu
-                        mode="inline"
-                        defaultSelectedKeys={['1']}
-                        defaultOpenKeys={['sub1']}
-                        style={{ height: '100%', borderInlineEnd: 0 }}
-                        items={items2}
-                    />
+                <Sider width={260} style={{ background: colorBgContainer }}>
+                    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <Typography.Text strong>Тип игры</Typography.Text>
+                        <Select
+                            value={analysisParams.game_type}
+                            onChange={(v) => {
+                                const usageList = ANALYSIS_OPTIONS.usageByType[v] || [];
+                                const nextUsage = usageList.includes(analysisParams.usage_area) ? analysisParams.usage_area : usageList[0];
+                                setAnalysisParams({ game_type: v, usage_area: nextUsage });
+                            }}
+                            options={ANALYSIS_OPTIONS.gameTypes.map(g => ({ value: g, label: g }))}
+                        />
+                        <Typography.Text strong>Область применения</Typography.Text>
+                        <Select
+                            value={analysisParams.usage_area}
+                            onChange={(v) => setAnalysisParams(p => ({ ...p, usage_area: v }))}
+                            options={(ANALYSIS_OPTIONS.usageByType[analysisParams.game_type] || []).map(u => ({ value: u, label: u }))}
+                        />
+                        <Button type="primary" block disabled={!selectedModelId} onClick={runAnalysis}>
+                            Запустить анализ
+                        </Button>
+                    </div>
                 </Sider>
                 <Layout style={{ padding: '0 24px 24px' }}>
                     <Content
@@ -213,7 +241,45 @@ const CenterPane = () => {
                             )
                         ) : (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                                <Typography.Text>{reportText}</Typography.Text>
+                                {reportData ? (
+                                    <div style={{ width: 720 }}>
+                                        <Card title="Результат анализа" bordered style={{ marginBottom: 16 }}>
+                                            <Space size="large">
+                                                <Statistic title="Полигонов" value={reportData?.metrics?.faces ?? 0} />
+                                                <Statistic title="Плотность" value={reportData?.metrics?.density ?? 0} precision={2} />
+                                            </Space>
+                                            <Divider />
+                                            <Space size="large">
+                                                <Space>
+                                                    <Typography.Text>Количество полигонов</Typography.Text>
+                                                    <Tag color={reportData?.result?.faces_ok ? 'green' : 'red'}>
+                                                        {reportData?.result?.faces_ok ? 'OK' : 'Превышение'}
+                                                    </Tag>
+                                                </Space>
+                                                <Space>
+                                                    <Typography.Text>Плотность полигонов</Typography.Text>
+                                                    <Tag color={reportData?.result?.density_ok ? 'green' : 'red'}>
+                                                        {reportData?.result?.density_ok ? 'OK' : 'Превышение'}
+                                                    </Tag>
+                                                </Space>
+                                            </Space>
+                                        </Card>
+                                        <Card title="Параметры" bordered style={{ marginBottom: 16 }}>
+                                            <Descriptions column={2}>
+                                                <Descriptions.Item label="Тип игры">{reportData?.params?.game_type}</Descriptions.Item>
+                                                <Descriptions.Item label="Область применения">{reportData?.params?.usage_area}</Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
+                                        <Card title="Границы" bordered>
+                                            <Descriptions column={2}>
+                                                <Descriptions.Item label="Макс. полигонов">{reportData?.limits?.max_faces}</Descriptions.Item>
+                                                <Descriptions.Item label="Макс. плотность">{reportData?.limits?.max_density}</Descriptions.Item>
+                                            </Descriptions>
+                                        </Card>
+                                    </div>
+                                ) : (
+                                    <Typography.Text>{reportText}</Typography.Text>
+                                )}
                             </div>
                         )}
                     </Content>
