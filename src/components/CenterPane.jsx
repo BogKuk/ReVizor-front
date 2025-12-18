@@ -16,6 +16,9 @@ const CenterPane = () => {
     const [selectedModelId, setSelectedModelId] = useState(null);
     const [reportText, setReportText] = useState('No analysis yet');
     const [reportData, setReportData] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [show, setShow] = useState(false);
+    const [exit, setExit] = useState(false);
     const {
         token: { colorBgContainer, borderRadiusLG },
     } = theme.useToken();
@@ -35,6 +38,19 @@ const CenterPane = () => {
         game_type: ANALYSIS_OPTIONS.gameTypes[1],
         usage_area: ANALYSIS_OPTIONS.usageByType[ANALYSIS_OPTIONS.gameTypes[1]][1],
     });
+    useEffect(() => {
+        const t = setTimeout(() => setShow(true), 50);
+        return () => clearTimeout(t);
+    }, []);
+    const playTransition = (apply) => {
+        setExit(true);
+        setShow(false);
+        setTimeout(() => {
+            if (typeof apply === 'function') apply();
+            setExit(false);
+            setShow(true);
+        }, 300);
+    };
     useEffect(() => {
         const stored = localStorage.getItem('lastModelUrl');
         if (stored) {
@@ -66,9 +82,11 @@ const CenterPane = () => {
                 if (rel) {
                     const full = `http://127.0.0.1:8000${rel}`;
                     await axios.head(full);
-                    setModelUrl(full);
-                    localStorage.setItem('lastModelUrl', full);
-                    setActiveTab('model');
+                    playTransition(() => {
+                        setModelUrl(full);
+                        localStorage.setItem('lastModelUrl', full);
+                        setActiveTab('model');
+                    });
                 }
             } catch {
                 messageApi.open({ type: 'error', content: 'Не удалось открыть модель' });
@@ -76,12 +94,14 @@ const CenterPane = () => {
         };
         window.addEventListener('open-model', handler);
         const reset = () => {
-            setSelectedModelId(null);
-            setModelUrl(null);
-            localStorage.removeItem('lastModelUrl');
-            setReportText('No analysis yet');
-            setReportData(null);
-            setActiveTab('model');
+            playTransition(() => {
+                setSelectedModelId(null);
+                setModelUrl(null);
+                localStorage.removeItem('lastModelUrl');
+                setReportText('No analysis yet');
+                setReportData(null);
+                setActiveTab('model');
+            });
         };
         window.addEventListener('new-analysis', reset);
         return () => {
@@ -109,8 +129,12 @@ const CenterPane = () => {
         })();
     }, [activeTab, selectedModelId, accessToken, messageApi]);
     const runAnalysis = async () => {
-        if (!selectedModelId) return;
+        if (!selectedModelId) {
+            messageApi.open({ type: 'error', content: 'Сначала выберите модель' });
+            return;
+        }
         try {
+            setAnalyzing(true);
             const r = await axios.post(`http://127.0.0.1:8000/analysis/models/${selectedModelId}/analyze`, analysisParams, {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
@@ -118,6 +142,8 @@ const CenterPane = () => {
             messageApi.open({ type: 'success', content: 'Анализ выполнен' });
         } catch {
             messageApi.open({ type: 'error', content: 'Не удалось выполнить анализ' });
+        } finally {
+            setAnalyzing(false);
         }
     };
     const uploadProps = {
@@ -133,13 +159,19 @@ const CenterPane = () => {
                         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
                     },
                 });
+                const newId = response.data?.id;
+                if (newId) {
+                    setSelectedModelId(newId);
+                }
                 const relUrl = response.data?.url;
                 if (relUrl) {
                     const fullUrl = `http://127.0.0.1:8000${relUrl}`;
                     try {
                         await axios.head(fullUrl);
-                        setModelUrl(fullUrl);
-                        localStorage.setItem('lastModelUrl', fullUrl);
+                        playTransition(() => {
+                            setModelUrl(fullUrl);
+                            localStorage.setItem('lastModelUrl', fullUrl);
+                        });
                     } catch {
                         messageApi.open({ type: 'error', content: 'Model unavailable' });
                     }
@@ -155,6 +187,7 @@ const CenterPane = () => {
     };
     return (
         <div
+            className={`fade-slide-up ${show ? 'show' : ''} ${exit ? 'exit' : ''}`}
             style={{
                 position: 'fixed',
                 left: 344,
@@ -199,7 +232,7 @@ const CenterPane = () => {
                             onChange={(v) => setAnalysisParams(p => ({ ...p, usage_area: v }))}
                             options={(ANALYSIS_OPTIONS.usageByType[analysisParams.game_type] || []).map(u => ({ value: u, label: u }))}
                         />
-                        <Button type="primary" block disabled={!selectedModelId} onClick={runAnalysis}>
+                        <Button type="primary" block loading={analyzing} onClick={runAnalysis}>
                             Запустить анализ
                         </Button>
                     </div>

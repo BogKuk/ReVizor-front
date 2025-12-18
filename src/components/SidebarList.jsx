@@ -8,6 +8,7 @@ const SidebarList = () => {
     const [models, setModels] = useState([]);
     const [loading, setLoading] = useState(false);
     const [messageApi, contextHolder] = message.useMessage();
+    const [show, setShow] = useState(false);
 
     const { accessToken, logout } = useContext(AuthContext);
 
@@ -55,9 +56,14 @@ const SidebarList = () => {
         window.addEventListener('models-updated', handler);
         return () => window.removeEventListener('models-updated', handler);
     }, [accessToken, fetchModels]);
+    useEffect(() => {
+        const t = setTimeout(() => setShow(true), 50);
+        return () => clearTimeout(t);
+    }, []);
 
     return (
         <div
+            className={`fade-slide-up ${show ? 'show' : ''}`}
             style={{
                 position: 'fixed',
                 left: 12,

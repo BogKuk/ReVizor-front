@@ -103,6 +103,7 @@ const AuthorizationCard = () => {
     };
 
     return (
+
         <Card className={`fade-slide-up ${show ? 'show' : ''} ${exit ? 'exit' : ''}`}
             title={
             <Title level={3} style={{ margin: 0 }}>
