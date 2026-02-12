@@ -61,7 +61,10 @@ const ModelInner = ({
 
     const vel = useRef({ x: 0, y: 0 });
 
-    const ext = useMemo(() => url.split('.').pop().toLowerCase(), [url]);
+    const ext = useMemo(() => {
+        const pathWithoutQuery = (url || '').split('?')[0];
+        return pathWithoutQuery.split('.').pop().toLowerCase();
+    }, [url]);
     const content = useMemo(() => {
         if (ext === 'glb' || ext === 'gltf') return useGLTF(url).scene.clone();
         if (ext === 'fbx') return useFBX(url).clone();
@@ -292,7 +295,10 @@ const ModelViewer = ({
                          onModelLoaded,
                          onError
                      }) => {
-    const ext = useMemo(() => (url || '').split('.').pop().toLowerCase(), [url]);
+    const ext = useMemo(() => {
+        const pathWithoutQuery = (url || '').split('?')[0];
+        return pathWithoutQuery.split('.').pop().toLowerCase();
+    }, [url]);
     useEffect(() => {
         if (!url) return;
         try {

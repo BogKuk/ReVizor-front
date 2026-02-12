@@ -12,6 +12,8 @@ const headerItems = [
 const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
     const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
+    const [recoloredUrl, setRecoloredUrl] = useState(null);
+    const [viewMode, setViewMode] = useState('original');
     const [messageApi, contextHolder] = message.useMessage();
     const [selectedModelId, setSelectedModelId] = useState(null);
     const [reportText, setReportText] = useState('No analysis yet');
@@ -79,11 +81,15 @@ const CenterPane = () => {
                     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
                 });
                 const rel = r.data?.url;
+                const recRel = r.data?.recolored_url;
                 if (rel) {
                     const full = `http://127.0.0.1:8000${rel}`;
+                    const fullRec = recRel ? `http://127.0.0.1:8000${recRel}` : null;
                     await axios.head(full);
                     playTransition(() => {
                         setModelUrl(full);
+                        setRecoloredUrl(fullRec);
+                        setViewMode('original');
                         localStorage.setItem('lastModelUrl', full);
                         setActiveTab('model');
                     });
@@ -120,8 +126,12 @@ const CenterPane = () => {
                 if (data && typeof data === 'object' && 'message' in data && data.message === 'no analysis yet') {
                     setReportText('No analysis yet');
                     setReportData(null);
+                    setRecoloredUrl(null);
                 } else {
                     setReportData(data);
+                    if (data?.recolored_model_url) {
+                        setRecoloredUrl(`http://127.0.0.1:8000${data.recolored_model_url}`);
+                    }
                 }
             } catch {
                 messageApi.open({ type: 'error', content: 'Не удалось получить отчёт' });
@@ -139,6 +149,9 @@ const CenterPane = () => {
                 headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
             });
             setReportData(r.data);
+            if (r.data?.recolored_model_url) {
+                setRecoloredUrl(`http://127.0.0.1:8000${r.data.recolored_model_url}`);
+            }
             messageApi.open({ type: 'success', content: 'Анализ выполнен' });
         } catch {
             messageApi.open({ type: 'error', content: 'Не удалось выполнить анализ' });
@@ -235,6 +248,21 @@ const CenterPane = () => {
                         <Button type="primary" block loading={analyzing} onClick={runAnalysis}>
                             Запустить анализ
                         </Button>
+                        {recoloredUrl && (
+                            <>
+                                <Divider style={{ margin: '12px 0' }} />
+                                <Typography.Text strong>Режим отображения</Typography.Text>
+                                <Select
+                                    value={viewMode}
+                                    onChange={(v) => setViewMode(v)}
+                                    options={[
+                                        { value: 'original', label: 'Стандартный' },
+                                        { value: 'recolored', label: 'Исправленные нормали' },
+                                    ]}
+                                    block
+                                />
+                            </>
+                        )}
                     </div>
                 </Sider>
                 <Layout style={{ padding: '0 24px 24px' }}>
@@ -251,7 +279,7 @@ const CenterPane = () => {
                             modelUrl ? (
                                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                                     <ModelViewer
-                                        url={modelUrl}
+                                        url={viewMode === 'recolored' && recoloredUrl ? recoloredUrl : modelUrl}
                                         width={'100%'}
                                         height={600}
                                         autoFrame
