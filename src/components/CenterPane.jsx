@@ -13,6 +13,7 @@ const CenterPane = () => {
     const { accessToken } = useContext(AuthContext);
     const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
     const [recoloredUrl, setRecoloredUrl] = useState(null);
+    const [densityUrl, setDensityUrl] = useState(null);
     const [viewMode, setViewMode] = useState('original');
     const [messageApi, contextHolder] = message.useMessage();
     const [selectedModelId, setSelectedModelId] = useState(null);
@@ -82,13 +83,16 @@ const CenterPane = () => {
                 });
                 const rel = r.data?.url;
                 const recRel = r.data?.recolored_url;
+                const densRel = r.data?.density_url;
                 if (rel) {
                     const full = `http://127.0.0.1:8000${rel}`;
                     const fullRec = recRel ? `http://127.0.0.1:8000${recRel}` : null;
+                    const fullDens = densRel ? `http://127.0.0.1:8000${densRel}` : null;
                     await axios.head(full);
                     playTransition(() => {
                         setModelUrl(full);
                         setRecoloredUrl(fullRec);
+                        setDensityUrl(fullDens);
                         setViewMode('original');
                         localStorage.setItem('lastModelUrl', full);
                         setActiveTab('model');
@@ -127,10 +131,14 @@ const CenterPane = () => {
                     setReportText('No analysis yet');
                     setReportData(null);
                     setRecoloredUrl(null);
+                    setDensityUrl(null);
                 } else {
                     setReportData(data);
                     if (data?.recolored_model_url) {
                         setRecoloredUrl(`http://127.0.0.1:8000${data.recolored_model_url}`);
+                    }
+                    if (data?.density_model_url) {
+                        setDensityUrl(`http://127.0.0.1:8000${data.density_model_url}`);
                     }
                 }
             } catch {
@@ -151,6 +159,9 @@ const CenterPane = () => {
             setReportData(r.data);
             if (r.data?.recolored_model_url) {
                 setRecoloredUrl(`http://127.0.0.1:8000${r.data.recolored_model_url}`);
+            }
+            if (r.data?.density_model_url) {
+                setDensityUrl(`http://127.0.0.1:8000${r.data.density_model_url}`);
             }
             messageApi.open({ type: 'success', content: 'Анализ выполнен' });
         } catch {
@@ -248,7 +259,7 @@ const CenterPane = () => {
                         <Button type="primary" block loading={analyzing} onClick={runAnalysis}>
                             Запустить анализ
                         </Button>
-                        {recoloredUrl && (
+                        {(recoloredUrl || densityUrl) && (
                             <>
                                 <Divider style={{ margin: '12px 0' }} />
                                 <Typography.Text strong>Режим отображения</Typography.Text>
@@ -258,6 +269,7 @@ const CenterPane = () => {
                                     options={[
                                         { value: 'original', label: 'Стандартный' },
                                         { value: 'recolored', label: 'Исправленные нормали' },
+                                        { value: 'density', label: 'Плотность полигонов' },
                                     ]}
                                     block
                                 />
@@ -279,7 +291,13 @@ const CenterPane = () => {
                             modelUrl ? (
                                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                                     <ModelViewer
-                                        url={viewMode === 'recolored' && recoloredUrl ? recoloredUrl : modelUrl}
+                                        url={
+                                            viewMode === 'recolored' && recoloredUrl
+                                                ? recoloredUrl
+                                                : viewMode === 'density' && densityUrl
+                                                ? densityUrl
+                                                : modelUrl
+                                        }
                                         width={'100%'}
                                         height={600}
                                         autoFrame
