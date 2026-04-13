@@ -7,6 +7,7 @@ import ModelViewer from './ModelViewer.jsx';
 const { Header, Content, Sider } = Layout;
 const headerItems = [
     { key: 'model', label: 'Model' },
+    { key: 'uv', label: 'UV' },
     { key: 'report', label: 'Report' },
 ];
 const CenterPane = () => {
@@ -14,7 +15,12 @@ const CenterPane = () => {
     const [modelUrl, setModelUrl] = useState(() => localStorage.getItem('lastModelUrl') || null);
     const [recoloredUrl, setRecoloredUrl] = useState(null);
     const [densityUrl, setDensityUrl] = useState(null);
+    const [uvUrl, setUvUrl] = useState(null);
+    const [uvOverlapUrl, setUvOverlapUrl] = useState(null);
+    const [uvDistortionUrl, setUvDistortionUrl] = useState(null);
+    const [uvTexelUrl, setUvTexelUrl] = useState(null);
     const [viewMode, setViewMode] = useState('original');
+    const [uvViewMode, setUvViewMode] = useState('original');
     const [messageApi, contextHolder] = message.useMessage();
     const [selectedModelId, setSelectedModelId] = useState(null);
     const [reportText, setReportText] = useState('No analysis yet');
@@ -84,16 +90,31 @@ const CenterPane = () => {
                 const rel = r.data?.url;
                 const recRel = r.data?.recolored_url;
                 const densRel = r.data?.density_url;
+                const uvRel = r.data?.uv_url;
+                const uvOverlapRel = r.data?.uv_overlap_url;
+                const uvDistortionRel = r.data?.uv_distortion_url;
+                const uvTexelRel = r.data?.uv_texel_density_url;
+                
                 if (rel) {
                     const full = `http://127.0.0.1:8000${rel}`;
                     const fullRec = recRel ? `http://127.0.0.1:8000${recRel}` : null;
                     const fullDens = densRel ? `http://127.0.0.1:8000${densRel}` : null;
+                    const fullUv = uvRel ? `http://127.0.0.1:8000${uvRel}` : null;
+                    const fullUvOverlap = uvOverlapRel ? `http://127.0.0.1:8000${uvOverlapRel}` : null;
+                    const fullUvDistortion = uvDistortionRel ? `http://127.0.0.1:8000${uvDistortionRel}` : null;
+                    const fullUvTexel = uvTexelRel ? `http://127.0.0.1:8000${uvTexelRel}` : null;
+                    
                     await axios.head(full);
                     playTransition(() => {
                         setModelUrl(full);
                         setRecoloredUrl(fullRec);
                         setDensityUrl(fullDens);
+                        setUvUrl(fullUv);
+                        setUvOverlapUrl(fullUvOverlap);
+                        setUvDistortionUrl(fullUvDistortion);
+                        setUvTexelUrl(fullUvTexel);
                         setViewMode('original');
+                        setUvViewMode('original');
                         localStorage.setItem('lastModelUrl', full);
                         setActiveTab('model');
                     });
@@ -132,6 +153,7 @@ const CenterPane = () => {
                     setReportData(null);
                     setRecoloredUrl(null);
                     setDensityUrl(null);
+                    setUvUrl(null);
                 } else {
                     setReportData(data);
                     if (data?.recolored_model_url) {
@@ -139,6 +161,20 @@ const CenterPane = () => {
                     }
                     if (data?.density_model_url) {
                         setDensityUrl(`http://127.0.0.1:8000${data.density_model_url}`);
+                    }
+                    if (data?.uv_image_url) {
+                        setUvUrl(`http://127.0.0.1:8000${data.uv_image_url}`);
+                    }
+                    if (data?.uv_overlap_url) {
+                        setUvOverlapUrl(`http://127.0.0.1:8000${data.uv_overlap_url}`);
+                    }
+                    if (data?.uv_distortion_url) {
+                        setUvDistortionUrl(`http://127.0.0.1:8000${data.uv_distortion_url}`);
+                    }
+                    if (data?.uv_texel_density_url) {
+                        setUvTexelUrl(`http://127.0.0.1:8000${data.uv_texel_density_url}`);
+                    } else {
+                        setUvUrl(null);
                     }
                 }
             } catch {
@@ -162,6 +198,20 @@ const CenterPane = () => {
             }
             if (r.data?.density_model_url) {
                 setDensityUrl(`http://127.0.0.1:8000${r.data.density_model_url}`);
+            }
+            if (r.data?.uv_image_url) {
+                setUvUrl(`http://127.0.0.1:8000${r.data.uv_image_url}`);
+            } else {
+                setUvUrl(null);
+            }
+            if (r.data?.uv_overlap_url) {
+                setUvOverlapUrl(`http://127.0.0.1:8000${r.data.uv_overlap_url}`);
+            }
+            if (r.data?.uv_distortion_url) {
+                setUvDistortionUrl(`http://127.0.0.1:8000${r.data.uv_distortion_url}`);
+            }
+            if (r.data?.uv_texel_density_url) {
+                setUvTexelUrl(`http://127.0.0.1:8000${r.data.uv_texel_density_url}`);
             }
             messageApi.open({ type: 'success', content: 'Анализ выполнен' });
         } catch {
@@ -275,6 +325,23 @@ const CenterPane = () => {
                                 />
                             </>
                         )}
+                        {activeTab === 'uv' && uvUrl && (
+                            <>
+                                <Divider style={{ margin: '12px 0' }} />
+                                <Typography.Text strong>Режим UV</Typography.Text>
+                                <Select
+                                    value={uvViewMode}
+                                    onChange={(v) => setUvViewMode(v)}
+                                    options={[
+                                        { value: 'original', label: 'Стандартная' },
+                                        { value: 'overlap', label: 'Перекрытия' },
+                                        { value: 'distortion', label: 'Искажения' },
+                                        { value: 'texel_density', label: 'Плотность текселей' },
+                                    ]}
+                                    block
+                                />
+                            </>
+                        )}
                     </div>
                 </Sider>
                 <Layout style={{ padding: '0 24px 24px' }}>
@@ -318,6 +385,25 @@ const CenterPane = () => {
                                     <Typography.Text type="secondary">Accepted formats: .obj, .fbx, .glb, .gltf</Typography.Text>
                                 </Dragger>
                             )
+                        ) : activeTab === 'uv' ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', height: '100%', overflow: 'auto' }}>
+                                {uvUrl ? (
+                                    <div style={{ width: '100%', maxWidth: 960, maxHeight: 600 }}>
+                                        <img 
+                                            src={
+                                                uvViewMode === 'overlap' && uvOverlapUrl ? uvOverlapUrl :
+                                                uvViewMode === 'distortion' && uvDistortionUrl ? uvDistortionUrl :
+                                                uvViewMode === 'texel_density' && uvTexelUrl ? uvTexelUrl :
+                                                uvUrl
+                                            } 
+                                            alt="UV Layout" 
+                                            style={{ width: '100%', height: 'auto', border: '1px solid #ddd' }} 
+                                        />
+                                    </div>
+                                ) : (
+                                    <Typography.Text>UV развертка отсутствует или не проанализирована</Typography.Text>
+                                )}
+                            </div>
                         ) : (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                                 {reportData ? (
@@ -326,21 +412,76 @@ const CenterPane = () => {
                                             <Space size="large">
                                                 <Statistic title="Полигонов" value={reportData?.metrics?.faces ?? 0} />
                                                 <Statistic title="Плотность" value={reportData?.metrics?.density ?? 0} precision={2} />
+                                                {reportData?.metrics?.uv_overlap !== undefined && (
+                                                    <Statistic 
+                                                        title="UV Overlap" 
+                                                        value={(reportData.metrics.uv_overlap * 100).toFixed(2)} 
+                                                        suffix="%" 
+                                                        valueStyle={{ color: reportData.result.uv_overlap_ok ? '#3f8600' : '#cf1322' }}
+                                                    />
+                                                )}
+                                                {reportData?.metrics?.uv_distortion !== undefined && (
+                                                    <Statistic 
+                                                        title="UV Distortion" 
+                                                        value={(reportData.metrics.uv_distortion * 100).toFixed(1)} 
+                                                        suffix="%" 
+                                                        valueStyle={{ color: reportData.result.uv_distortion_ok ? '#3f8600' : '#cf1322' }}
+                                                    />
+                                                )}
+                                                {reportData?.metrics?.texel_density !== undefined && (
+                                                    <Statistic 
+                                                        title="Texel Density" 
+                                                        value={reportData.metrics.texel_density.toFixed(1)} 
+                                                        suffix=" px/m" 
+                                                    />
+                                                )}
+                                                {reportData?.metrics?.texel_uniformity !== undefined && (
+                                                    <Statistic 
+                                                        title="TD Uniformity" 
+                                                        value={(reportData.metrics.texel_uniformity * 100).toFixed(1)} 
+                                                        suffix="%" 
+                                                        valueStyle={{ color: reportData.result.texel_uniformity_ok ? '#3f8600' : '#cf1322' }}
+                                                    />
+                                                )}
                                             </Space>
                                             <Divider />
-                                            <Space size="large">
-                                                <Space>
+                                            <Space size="large" direction="vertical" style={{ width: '100%' }}>
+                                                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                                                     <Typography.Text>Количество полигонов</Typography.Text>
                                                     <Tag color={reportData?.result?.faces_ok ? 'green' : 'red'}>
                                                         {reportData?.result?.faces_ok ? 'OK' : 'Превышение'}
                                                     </Tag>
                                                 </Space>
-                                                <Space>
+                                                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                                                     <Typography.Text>Плотность полигонов</Typography.Text>
                                                     <Tag color={reportData?.result?.density_ok ? 'green' : 'red'}>
                                                         {reportData?.result?.density_ok ? 'OK' : 'Превышение'}
                                                     </Tag>
                                                 </Space>
+                                                {reportData?.result?.uv_overlap_ok !== undefined && (
+                                                    <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                                                        <Typography.Text>Перекрытие UV (Overlap)</Typography.Text>
+                                                        <Tag color={reportData?.result?.uv_overlap_ok ? 'green' : 'red'}>
+                                                            {reportData?.result?.uv_overlap_ok ? 'OK' : 'Обнаружено'}
+                                                        </Tag>
+                                                    </Space>
+                                                )}
+                                                {reportData?.result?.uv_distortion_ok !== undefined && (
+                                                    <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                                                        <Typography.Text>Искажение UV (Distortion)</Typography.Text>
+                                                        <Tag color={reportData?.result?.uv_distortion_ok ? 'green' : 'red'}>
+                                                            {reportData?.result?.uv_distortion_ok ? 'OK' : 'Высокое'}
+                                                        </Tag>
+                                                    </Space>
+                                                )}
+                                                {reportData?.result?.texel_uniformity_ok !== undefined && (
+                                                    <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                                                        <Typography.Text>Равномерность текселей (Uniformity)</Typography.Text>
+                                                        <Tag color={reportData?.result?.texel_uniformity_ok ? 'green' : 'red'}>
+                                                            {reportData?.result?.texel_uniformity_ok ? 'OK' : 'Неравномерно'}
+                                                        </Tag>
+                                                    </Space>
+                                                )}
                                             </Space>
                                         </Card>
                                         <Card title="Параметры" bordered style={{ marginBottom: 16 }}>
