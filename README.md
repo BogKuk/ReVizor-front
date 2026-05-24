@@ -1,2 +1,2 @@
-# ReVizor frontend
-test commit
+# Frontend
+Клиентская часть дипломного проекта
